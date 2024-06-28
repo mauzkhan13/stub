@@ -183,7 +183,7 @@ for index, link in enumerate (all_links):
     main_url.append(link)
 
 print('Successfully  extracted data..............')
-
+driver.close()
 df = pd.DataFrame(zip(names, address, website,website_link, cat, main_url ), columns= ['Company Name','address','Domain URL','website_link', 'Category', 'Link'])
 
 creds = Credentials.from_service_account_info(api_file,

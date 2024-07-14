@@ -34,7 +34,7 @@ options.add_argument('--disable-logging')
 options.add_argument('--enable-automation')
 options.add_argument('--log-level=3')
 options.add_argument('--v=99')
-# options.add_argument('--headless')
+options.add_argument('--headless')
 driver = uc.Chrome(
     options=options,
 )

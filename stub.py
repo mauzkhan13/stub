@@ -24,7 +24,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium_stealth import stealth
 import undetected_chromedriver as UC
 
-options = Options()
+# options = Options()
 # options.add_argument('--disable-blink-features=AutomationControlled')
 # options.add_argument('--no-sandbox')
 # options.add_argument('--disable-gpu')
@@ -39,20 +39,30 @@ options = Options()
 #     options=options,
 # )
 # driver.get('https://www.google.com/')
-driver = uc.Chrome(options=options)
-driver.get('https://www.google.com/')
+# driver = uc.Chrome(options=options)
+# driver.get('https://www.google.com/')
 
-driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-stealth(driver,
-        languages=["en-US", "en"],
-        vendor="Google Inc.",
-        platform="Win32",
-        webgl_vendor="Intel Inc.",
-        renderer="Intel Iris OpenGL Engine",
-        fix_hairline=True,
-        )
-while driver.execute_script("return document.readyState") != "complete":
-    pass
+# driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+# stealth(driver,
+#         languages=["en-US", "en"],
+#         vendor="Google Inc.",
+#         platform="Win32",
+#         webgl_vendor="Intel Inc.",
+#         renderer="Intel Iris OpenGL Engine",
+#         fix_hairline=True,
+#         )
+# while driver.execute_script("return document.readyState") != "complete":
+#     pass
+# driver.maximize_window()
+
+options = Options()
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-gpu')
+options.add_argument('--headless')
+driver = webdriver.Chrome(options=options)
+url = 'https://www.google.com/'
+
+driver.get(url)
 driver.maximize_window()
 
 api_file  = {

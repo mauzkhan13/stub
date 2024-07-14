@@ -22,6 +22,38 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium_stealth import stealth
+import undetected_chromedriver as UC
+
+options = uc.ChromeOptions()
+options.add_argument('--disable-blink-features=AutomationControlled')
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-gpu')
+options.add_argument('--start-maximized')
+options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--disable-logging')
+options.add_argument('--enable-automation')
+options.add_argument('--log-level=3')
+options.add_argument('--v=99')
+options.add_argument('--headless')
+driver = uc.Chrome(
+    options=options,
+)
+driver.get('https://www.google.com/')
+
+
+driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+stealth(driver,
+        languages=["en-US", "en"],
+        vendor="Google Inc.",
+        platform="Win32",
+        webgl_vendor="Intel Inc.",
+        renderer="Intel Iris OpenGL Engine",
+        fix_hairline=True,
+        )
+while driver.execute_script("return document.readyState") != "complete":
+    pass
+driver.maximize_window()
 
 api_file  = {
   "type": "service_account",
@@ -192,10 +224,9 @@ for emails, fb_url, inst_url, phones, x_url, linkedin_url, website in zip(
     row += [fb_url, inst_url, x_url, linkedin_url, website]
     data.append(row)
 
-# Define column names
+
 columns = email_columns + phone_columns + ['Facebook URL', 'Instagram URL', 'X URL', 'LinkedIn URL', 'Website URL']
 
-# Create the DataFrame
 df = pd.DataFrame(data, columns=columns)
 
 creds = Credentials.from_service_account_info(api_file,

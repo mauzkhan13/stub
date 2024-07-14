@@ -251,4 +251,4 @@ worksheet = spreadsheet.get_worksheet(0)
 worksheet.append_rows(df.values.tolist(), value_input_option='USER_ENTERED')
 
 
-Print('Data Exported to the Google Sheet Successfully')
+print('Data Exported to the Google Sheet Successfully')

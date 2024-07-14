@@ -135,7 +135,7 @@ for index, row in df.iterrows():
         driver.get(url)
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     except TimeoutException:
-      pass
+
       print(f"Page load timed out after 10 seconds for {url}.")
     except Exception as e:
         print(f"Failed to load {url}")

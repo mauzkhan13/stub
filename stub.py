@@ -131,6 +131,7 @@ for index, row in df.iterrows():
     url = row[link_column_name]
     print(f"Processing Website URL {index} : {url}")
     try:
+        driver.set_page_load_timeout(10)
         driver.get(url)
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     except TimeoutException:

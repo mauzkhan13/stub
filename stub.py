@@ -16,22 +16,12 @@ import time
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2.service_account import Credentials
-
-
-options = Options()
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-gpu')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--disable-logging')
-options.add_argument('--log-level=3')
-options.add_argument('--headless')
-options.add_argument('--window-size=1920,1080')
-options.binary_location = '/usr/bin/google-chrome' 
-driver = webdriver.Chrome(options=options)
-url = 'https://www.google.com/maps/search/'
-driver.get(url)
-driver.maximize_window()
-print('Browser is running')
+import re
+import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 api_file  = {
   "type": "service_account",
@@ -48,151 +38,176 @@ api_file  = {
 }
 
 
+emails_address_list = []
+facebook_urls_list = []
+instagram_urls_list = []
+phone_numbers_list = []
+x_urls_list = []
+linkedin_urls_list = []
+website_list = []
 
+def extract_contacts(page_source):
+    fb_url_pattern = re.compile(r'https?://(?:www\.)?facebook\.com/[a-zA-Z0-9._%+-/]+')
+    email_pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
+    inst_url_pattern = re.compile(r'https?://(?:www\.)?instagram\.com/[a-zA-Z0-9._%+-/]+')
+    x_url_pattern = re.compile(r'https?://(?:www\.)?twitter\.com/[a-zA-Z0-9._%+-/]+')
+    l_url_pattern = re.compile(r'https?://(?:www\.)?linkedin\.com/[a-zA-Z0-9._%+-/]+')
 
-main_link = []
-unique_links = []
+    phone_pattern_1 = re.compile(r'(?i)(?:tel|phone|Telephone|Mobile|Phone|Phone Number|Tel:)[:\s]*\+?\(?\d{1,4}\)?[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}')
+    phone_pattern_2 = re.compile(r'\+\d{1,4}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}')
+
+    phone_numbers = phone_pattern_1.findall(page_source)
+    # If no phone numbers were found with the first pattern, use the second pattern
+    if not phone_numbers:
+        phone_numbers = phone_pattern_2.findall(page_source)
+
+    facebook_urls = fb_url_pattern.findall(page_source)
+    emails = email_pattern.findall(page_source)
+    instagram_urls = inst_url_pattern.findall(page_source)
+    # phone_numbers = phone_pattern.findall(page_source)
+    x_urls = x_url_pattern.findall(page_source)
+    linkedin_urls = l_url_pattern.findall(page_source)
+
+    return emails, facebook_urls, instagram_urls, phone_numbers, x_urls, linkedin_urls
+
 
 creds = Credentials.from_service_account_info(api_file,
                                               scopes=["https://spreadsheets.google.com/feeds",
                                                       "https://www.googleapis.com/auth/drive"])
 client = gspread.authorize(creds)
-spreadsheet_id = '1We0hu5dHLuyUQAtvi946wi4I9oYKd56XwtFArqO3694'
+spreadsheet_id = '1fc65YhFEPShdJFs9M87aP7_ttDh7yGNlyVRr21jl0lk'
 spreadsheet = client.open_by_key(spreadsheet_id)
 
 worksheet = spreadsheet.get_worksheet(0)
 records = worksheet.get_all_records()
 df = pd.DataFrame(records)
 
-link_column_name = 'county'
-
+link_column_name = 'place_website'
 for index, row in df.iterrows():
-    city = row[link_column_name]
-    search = f'Driving school in {city}, France'
-    print(f'{index+1}, {city}')
-
-    box = driver.find_element(By.XPATH, '//input[@id="searchboxinput"]')
+    # if index >= 2:  # Process only the first two URLs
+    #     break
+    url = row[link_column_name]
+    print(f"Processing Website URL {index} : {url}")
     try:
-        closing_sign = driver.find_element(By.XPATH, '(//*[contains(text(),"")])[1]').click()
+        driver.get(url)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     except Exception as e:
-        pass
-    sleep(0.5)
-    box.send_keys(search)
-    sleep(0.5)
-    box.send_keys(Keys.ENTER)
-    sleep(1)
+        print(f"Failed to load {url}")
+        emails_address_list.append(['Failed to load'] * 3)
+        facebook_urls_list.append('N/A')
+        instagram_urls_list.append('N/A')
+        phone_numbers_list.append(['N/A'] * 3)
+        x_urls_list.append('N/A')
+        linkedin_urls_list.append('N/A')
+        website_list.append(url)
+        continue
 
-    start_time = time.time()
-    while True:   
-        try:
-            try:
-                reached_page = driver.find_element(By.XPATH, '//*[contains(text(),"reached the end of the list.")]')
-                if reached_page:
-                    break
-            except NoSuchElementException:
-                pass
-            try:
-                name_page = driver.find_element(By.XPATH, '//h1[@class="DUwDvf lfPIob"]')
-                if name_page:
-                    break
-            except NoSuchElementException:
-                pass
-
-            scroll_pages = driver.find_elements(By.XPATH, '//div[@class="qjESne veYFef"]')
-            for scroll_page in scroll_pages:
-                if time.time() - start_time > 40:
-                    raise TimeoutException
-
-                try:
-                    sleep(0.5)
-                    driver.execute_script("arguments[0].scrollIntoView(true);", scroll_page)
-                    driver.execute_script("arguments[0].click();", scroll_page)
-                except Exception as e:
-                    raise NoSuchElementException
-            else:
-                continue
-            break
-        except (NoSuchElementException, TimeoutException):
-            break
-    sleep(2)
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-    divs = soup.find_all('a', {'href': lambda x: x and x.startswith('https://www.google.com/maps/place/')})
-    for link in divs:
-        url = link.get('href')
-        main_link.append(url)
- 
- 
-print(f"Total links collected: {len(main_link)}")
-
-
-
-names = []
-address = []
-website = []
-cat = []
-website_link = []
-main_url = []
-
-all_links = list(set(main_link))
-print(len(all_links))
-
-for index, link in enumerate (all_links):
-    url = f'{link}'
+    emails, fb_urls, inst_urls, phones, x_urls, linkedin_urls = extract_contacts(driver.page_source)
+    if emails:
+        emails_padded = emails[:3] + ['N/A'] * (3 - len(emails[:3]))
+    else:
+        emails_padded = ['N/A'] * 3
+    emails_address_list.append(emails_padded)
+    facebook_urls_list.append(fb_urls[0] if fb_urls else 'N/A')
+    instagram_urls_list.append(inst_urls[0] if inst_urls else 'N/A')
     
-    driver.get(url)
-    print(f'Link Number: {index}')
-    
-    sleep(1)
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-
-    try:
-        name = soup.find('h1').text
-        names.append(name)
-    except AttributeError:
-        names.append("N/A")
-
-    try:
-        contacts = soup.find('div', attrs={'aria-label': lambda x: x and x.startswith("Information for")}).find_all('div')[2].text.replace('', '').replace('', '').strip()
-        address.append(contacts)
-    except AttributeError:
-        address.append("N/A")
-
-    try:
-        sites = soup.find('a', {'data-tooltip': 'Open website'}).text.replace('', '').strip()
-        website.append(sites)
-    except AttributeError:
-        website.append("N/A")
-
-    try:
-        a_tag = soup.find('a', {'data-tooltip': 'Open website'})
-
-        if a_tag:
-            href = a_tag.get('href')
-            website_link.append(href)
+    if phones:
+        if len(phones) >= 3:
+            phones_padded = phones[-3:]
         else:
-            website_link.append("N/A")
-    except AttributeError:
-        website_link.append("N/A")
+            phones_padded = ['N/A'] * (3 - len(phones)) + phones
+    else:
+        phones_padded = ['N/A'] * 3
+    phone_numbers_list.append(phones_padded)
+    x_urls_list.append(x_urls[0] if x_urls else 'N/A')
+    linkedin_urls_list.append(linkedin_urls[0] if linkedin_urls else 'N/A')
+    website_list.append(driver.current_url)
 
-    try:
-        ca = soup.find(lambda tag: tag.name == 'div' and tag.get('class') == ['fontBodyMedium'] and tag.find('span') and tag.find('span').find('button')).text
-        cat.append(ca)
-    except AttributeError:
-        cat.append("N/A")
-        
-    main_url.append(link)
+    contact_xpath1 = '//a[@class and contains(@href, "contact") and contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "contact")]'
+    contact_xpath2 = '//a[starts-with(@href, "/contact")]'
+    contact_xpath3 = '//a[contains(@href, "contact")]'
+    contact_xpath4 = '//a[contains(@href, "Contact")]'
 
-print('Successfully  extracted data..............')
-driver.close()
-df = pd.DataFrame(zip(names, address, website,website_link, cat, main_url ), columns= ['Company Name','address','Domain URL','website_link', 'Category', 'Link'])
+    contact_found = False
+    for xpath in [contact_xpath1, contact_xpath2, contact_xpath3,contact_xpath4]:
+        try:
+            contact_link = WebDriverWait(driver, 0.5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+            href = contact_link.get_attribute('href')
+            if href:
+                driver.get(href)
+                WebDriverWait(driver, 0.5).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            else:
+                contact_link.click()
+                WebDriverWait(driver, 0.5).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            contact_found = True
+            break
+        except Exception as e:
+            pass
+
+    if contact_found:
+        emails, fb_urls, inst_urls, phones, x_urls, linkedin_urls = extract_contacts(driver.page_source)
+        if emails:
+            emails_padded = emails[:3] + ['N/A'] * (3 - len(emails[:3]))
+        else:
+            emails_padded = ['N/A'] * 3
+        emails_address_list[-1] = emails_padded
+        facebook_urls_list[-1] = fb_urls[0] if fb_urls else 'N/A'
+        instagram_urls_list[-1] = inst_urls[0] if inst_urls else 'N/A'
+        if phones:
+            if len(phones) >= 3:
+                phones_padded = phones[-3:]
+            else:
+                phones_padded = ['N/A'] * (3 - len(phones)) + phones
+        else:
+            phones_padded = ['N/A'] * 3
+        phone_numbers_list[-1] = phones_padded
+        x_urls_list[-1] = x_urls[0] if x_urls else 'N/A'
+        linkedin_urls_list[-1] = linkedin_urls[0] if linkedin_urls else 'N/A'
+        website_list[-1] = driver.current_url
+    else:
+        emails_address_list[-1] = ['N/A'] * 3
+        facebook_urls_list[-1] = 'N/A'
+        instagram_urls_list[-1] = 'N/A'
+        phone_numbers_list[-1] = ['N/A'] * 3
+        x_urls_list[-1] = 'N/A'
+        linkedin_urls_list[-1] = 'N/A'
+        website_list[-1] = driver.current_url
+        print("No contact page found or navigated")
+
+
+
+
+max_emails = max(len(emails) for emails in emails_address_list)
+max_phones = max(len(phones) for phones in phone_numbers_list)
+
+email_columns = [f'emails_address {i+1}' for i in range(max_emails)]
+phone_columns = [f'phone_numbers {i+1}' for i in range(max_phones)]
+
+# Prepare the data for the DataFrame
+data = []
+for emails, fb_url, inst_url, phones, x_url, linkedin_url, website in zip(
+    emails_address_list, facebook_urls_list, instagram_urls_list, phone_numbers_list, x_urls_list, linkedin_urls_list, website_list):
+    row = emails + [''] * (max_emails - len(emails))
+    row += phones + [''] * (max_phones - len(phones))
+    row += [fb_url, inst_url, x_url, linkedin_url, website]
+    data.append(row)
+
+# Define column names
+columns = email_columns + phone_columns + ['Facebook URL', 'Instagram URL', 'X URL', 'LinkedIn URL', 'Website URL']
+
+# Create the DataFrame
+df = pd.DataFrame(data, columns=columns)
 
 creds = Credentials.from_service_account_info(api_file,
                                               scopes=["https://spreadsheets.google.com/feeds",
                                                       "https://www.googleapis.com/auth/drive"])
 client = gspread.authorize(creds)
 
-spreadsheet_id = '1Opx6iDLCn0tRxMcHRAA1HIXFqKxZgJxy4h22c-eUmlc'
+spreadsheet_id = '1lZzIeB8-GWNy66b9ShFbdPavSHVY9yG8R_tO7aVPGdI'
 spreadsheet = client.open_by_key(spreadsheet_id)
 
 worksheet = spreadsheet.get_worksheet(0)
 worksheet.append_rows(df.values.tolist(), value_input_option='USER_ENTERED')
+
+
+Print('Data Exported to the Google Sheet Successfully')

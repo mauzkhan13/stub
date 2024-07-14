@@ -238,7 +238,7 @@ for emails, fb_url, inst_url, phones, x_url, linkedin_url, website in zip(
 columns = email_columns + phone_columns + ['Facebook URL', 'Instagram URL', 'X URL', 'LinkedIn URL', 'Website URL']
 
 df = pd.DataFrame(data, columns=columns)
-df['Phone Number'] = df['Phone Number'].apply(lambda x: f"'{x}" if x.startswith('+') else x)
+df[phone_columns] = df[phone_columns].applymap(lambda x: f"'{x}" if isinstance(x, str) and x.startswith('+') else x)
 creds = Credentials.from_service_account_info(api_file,
                                               scopes=["https://spreadsheets.google.com/feeds",
                                                       "https://www.googleapis.com/auth/drive"])

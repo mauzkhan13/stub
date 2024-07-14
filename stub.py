@@ -9,7 +9,6 @@ import json
 from time import sleep
 import os
 from selenium.webdriver.support.ui import WebDriverWait, Select
-from bs4 import BeautifulSoup
 import re
 from selenium.webdriver.common.keys import Keys
 import time

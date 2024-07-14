@@ -22,7 +22,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium_stealth import stealth
-import undetected_chromedriver as UC
+import undetected_chromedriver as uc
 
 # options = Options()
 # options.add_argument('--disable-blink-features=AutomationControlled')
